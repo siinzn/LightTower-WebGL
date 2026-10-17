@@ -11,22 +11,26 @@
     <script id="vertex-shader" type="x-shader/x-vertex">
       #version 300 es
       in vec4 aPosition;
+      in vec4 aColor;
+      out vec4 vColor;
       void main()
       {
        gl_Position = aPosition;
+       vColor = aColor;
       }
     </script>
     <script id="fragment-shader" type="x-shader/x-fragment">
       #version 300 es
       precision mediump float;
+      in vec4 vColor;
       out vec4 fColor;
       void main()
       {
-       fColor = vec4( 0, 0, 1, 1 );
+       fColor = vColor;
       }
     </script>
     <script type="text/javascript" src="../Common/initShaders.js"></script>
     <script src="./model.js"></script>
-    <canvas id="gl-canvas" width="580" height="580"></canvas>
+    <canvas id="gl-canvas" width="800" height="800"></canvas>
   </body>
 </html>
