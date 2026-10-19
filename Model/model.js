@@ -45,32 +45,175 @@ const drawCircle = (arr, cx, cy, radius, color, segments) => {
 };
 
 function createModelData() {
+  const SEGMENTS = 48;
+
+  //default colors
   const RED = [1, 0, 0, 1];
   const GREEN = [0, 1, 0, 1];
   const BLUE = [0, 0, 1, 1];
   const WHITE = [1, 1, 1, 1];
 
+  //illustration colors
+  const CREAM = normalizeColor(234, 254, 201, 1);
+  const TOWER_RED = normalizeColor(218, 34, 26, 1);
+  const BROWN = normalizeColor(101, 67, 33, 1);
+  const PURPLE = normalizeColor(48, 25, 52, 1);
+  const TEAL = normalizeColor(1, 80, 93, 0.9);
+
   const data = [];
 
-  drawTriangle(data, -0.5, -1, WHITE, 0.5, -1, WHITE, 0, -0.5, WHITE);
-
+  // the land
   drawQuad(
     data,
-    [-0.5, -0.5],
-    BLUE,
-    [0.5, -0.5],
-    BLUE,
-    [0.5, 0.5],
-    BLUE,
-    [-0.5, 0.5],
+    [-1, -1],
+    BROWN,
+    [1, -1],
+    BROWN,
+    [1, -0.72],
+    BROWN,
+    [-1, -0.72],
+    BROWN,
+  );
+  // main tower structure
+  drawQuad(
+    data,
+    [-0.24, -0.72],
+    CREAM,
+    [0.24, -0.72],
+    CREAM,
+    [0.132, 0.4],
+    CREAM,
+    [-0.132, 0.4],
+    CREAM,
+  );
+  // RED bottom PArt
+  drawQuad(
+    data,
+    [-0.21, -0.4],
+    TOWER_RED,
+    [0.21, -0.4],
+    TOWER_RED,
+    [0.18, -0.1],
+    TOWER_RED,
+    [-0.18, -0.1],
+    TOWER_RED,
+  );
+  // RED top PArt
+  drawQuad(
+    data,
+    [-0.156, 0.15],
+    TOWER_RED,
+    [0.156, 0.15],
+    TOWER_RED,
+    [0.132, 0.4],
+    TOWER_RED,
+    [-0.132, 0.4],
+    TOWER_RED,
+  );
+  // gallery part
+  drawQuad(
+    data,
+    [-0.156, 0.43],
+    PURPLE,
+    [0.156, 0.43],
+    PURPLE,
+    [0.132, 0.4],
+    PURPLE,
+    [-0.132, 0.4],
+    PURPLE,
+  );
+  // neck part
+  drawQuad(
+    data,
+    [-0.132, 0.4],
+    PURPLE,
+    [0.132, 0.4],
+    PURPLE,
+    [0.12, 0.6],
+    PURPLE,
+    [-0.12, 0.6],
+    PURPLE,
+  );
+  // top semi circle
+  var topCX = 0;
+  var topCY = 0.75;
+  var topR = 0.1;
+  drawCircle(data, topCX, topCY, topR, RED, SEGMENTS);
+  // draw light from lantern - light is overlapped by the lantern glass to look more seamless
+  drawQuad(
+    data,
+    [0.1, 0.66],
+    CREAM,
+    [1, 0.4],
+    TEAL,
+    [1, 0.9],
+    TEAL,
+    [-0.1, 0.66],
+    CREAM,
+  );
+  // lantern glass
+  drawQuad(
+    data,
+    [-0.118, 0.6],
+    CREAM,
+    [0.118, 0.6],
+    CREAM,
+    [0.1, 0.75],
+    CREAM,
+    [-0.1, 0.75],
+    CREAM,
+  );
+  // draw the moon
+  var MoonCX = -0.45;
+  var MoonCY = 0.85;
+  var MoonR = 0.05;
+  drawCircle(data, MoonCX, MoonCY, MoonR, WHITE, SEGMENTS);
+
+  // draw water lines - lines are just small heighted quads
+  drawQuad(
+    data,
+    [-0.7, -0.5],
+    WHITE,
+    [-0.3, -0.5],
+    WHITE,
+    [-0.3, -0.495],
+    WHITE,
+    [-0.7, -0.495],
     WHITE,
   );
-
-  var numCircleSegments = 48;
-  var cx = -0.75;
-  var cy = 0.75;
-  var r = 0.2;
-  drawCircle(data, cx, cy, r, RED, numCircleSegments);
+  drawQuad(
+    data,
+    [-0.4, -0.3],
+    WHITE,
+    [-0.2, -0.3],
+    WHITE,
+    [-0.2, -0.295],
+    WHITE,
+    [-0.4, -0.295],
+    WHITE,
+  );
+  drawQuad(
+    data,
+    [0.8, -0.1],
+    WHITE,
+    [0.4, -0.1],
+    WHITE,
+    [0.4, -0.095],
+    WHITE,
+    [0.8, -0.095],
+    WHITE,
+  );
+  drawQuad(
+    data,
+    [0.6, -0.4],
+    WHITE,
+    [0.3, -0.4],
+    WHITE,
+    [0.3, -0.395],
+    WHITE,
+    [0.6, -0.395],
+    WHITE,
+  );
 
   return data;
 }
