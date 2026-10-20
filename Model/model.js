@@ -28,6 +28,21 @@ const drawQuad = (arr, p1, c1, p2, c2, p3, c3, p4, c4) => {
   drawTriangle(arr, p1[0], p1[1], c1, p3[0], p3[1], c3, p4[0], p4[1], c4);
 };
 
+// draw a rectangle - x, y is the bottom left corner
+const drawRect = (arr, x, y, w, h, color) => {
+  drawQuad(
+    arr,
+    [x, y],
+    color,
+    [x + w, y],
+    color,
+    [x + w, y + h],
+    color,
+    [x, y + h],
+    color,
+  );
+};
+
 // Draw a circle using triangle fan geometry
 const drawCircle = (arr, cx, cy, radius, color, segments) => {
   for (let i = 0; i < segments; i++) {
@@ -44,36 +59,126 @@ const drawCircle = (arr, cx, cy, radius, color, segments) => {
   }
 };
 
+// Draw a circle with a color fade from the center to the edge
+const drawGlow = (arr, cx, cy, radius, centerColor, edgeColor, segments) => {
+  for (let i = 0; i < segments; i++) {
+    const theta1 = (i / segments) * 2 * Math.PI;
+    const theta2 = ((i + 1) / segments) * 2 * Math.PI;
+
+    const x1 = cx + radius * Math.cos(theta1);
+    const y1 = cy + radius * Math.sin(theta1);
+
+    const x2 = cx + radius * Math.cos(theta2);
+    const y2 = cy + radius * Math.sin(theta2);
+
+    drawTriangle(
+      arr,
+      cx,
+      cy,
+      centerColor,
+      x1,
+      y1,
+      edgeColor,
+      x2,
+      y2,
+      edgeColor,
+    );
+  }
+};
+
 function createModelData() {
   const SEGMENTS = 48;
 
   //default colors
   const RED = [1, 0, 0, 1];
-  const GREEN = [0, 1, 0, 1];
-  const BLUE = [0, 0, 1, 1];
   const WHITE = [1, 1, 1, 1];
 
   //illustration colors
   const CREAM = normalizeColor(234, 254, 201, 1);
   const TOWER_RED = normalizeColor(218, 34, 26, 1);
-  const BROWN = normalizeColor(101, 67, 33, 1);
   const PURPLE = normalizeColor(48, 25, 52, 1);
-  const TEAL = normalizeColor(1, 80, 93, 0.9);
+
+  // gradient colors
+  const SKY_TOP = normalizeColor(1, 45, 62, 1); // dark at the top
+  const SKY_BOTTOM = normalizeColor(8, 110, 122, 1); // lighter near the sea
+  const SEA_TOP = normalizeColor(4, 70, 88, 1);
+  const SEA_BOTTOM = normalizeColor(1, 38, 52, 1);
+  const ISLAND_TOP = normalizeColor(60, 35, 70, 1);
+  const ISLAND_BOTTOM = normalizeColor(25, 12, 35, 1);
+
+  // beam: same color at both ends, only alpha changes (needs blending)
+  const BEAM_NEAR = normalizeColor(234, 254, 201, 0.6);
+  const BEAM_FAR = normalizeColor(234, 254, 201, 0);
+
+  // water lines
+  const WATER = normalizeColor(200, 230, 225, 0.8);
 
   const data = [];
 
-  // the land
+  // the sky - a different color on the top and bottom corners makes the gradient
   drawQuad(
     data,
     [-1, -1],
-    BROWN,
+    SKY_BOTTOM,
     [1, -1],
-    BROWN,
-    [1, -0.72],
-    BROWN,
-    [-1, -0.72],
-    BROWN,
+    SKY_BOTTOM,
+    [1, 1],
+    SKY_TOP,
+    [-1, 1],
+    SKY_TOP,
   );
+
+  // stars - drawn before the scene so the tower and other objects cover them
+  for (let i = 0; i < 50; i++) {
+    const x = Math.random() * 2 - 1;
+    const u = Math.random();
+    const y = 0.98 - 1.6 * u * u - -0.35;
+    const radius = 0.002 + Math.random() * 0.006;
+    const alpha = 0.4 + Math.random() * 0.6;
+    const color = normalizeColor(255, 255, 255, alpha);
+
+    drawCircle(data, x, y, radius, color, 8);
+  }
+
+  // draw light from lantern - drawn early so the tower and lantern glass cover its start
+  drawQuad(
+    data,
+    [0.1, 0.66],
+    BEAM_NEAR,
+    [1, 0.4],
+    BEAM_FAR,
+    [1, 0.9],
+    BEAM_FAR,
+    [-0.1, 0.66],
+    BEAM_NEAR,
+  );
+
+  // the sea
+  drawQuad(
+    data,
+    [-1, -1],
+    SEA_BOTTOM,
+    [1, -1],
+    SEA_BOTTOM,
+    [1, -0.72],
+    SEA_TOP,
+    [-1, -0.72],
+    SEA_TOP,
+  );
+
+  // island base
+  drawQuad(
+    data,
+    [-0.55, -0.88],
+    ISLAND_BOTTOM,
+    [0.55, -0.88],
+    ISLAND_BOTTOM,
+    [0.38, -0.72],
+    ISLAND_TOP,
+    [-0.38, -0.72],
+    ISLAND_TOP,
+  );
+
   // main tower structure
   drawQuad(
     data,
@@ -110,6 +215,14 @@ function createModelData() {
     [-0.132, 0.4],
     TOWER_RED,
   );
+
+  // door
+  drawRect(data, -0.06, -0.72, 0.12, 0.16, PURPLE);
+  // windows - one in the middle of each upper band
+  drawRect(data, -0.027, -0.285, 0.054, 0.07, PURPLE); // lower red band
+  drawRect(data, -0.027, -0.01, 0.054, 0.07, PURPLE); // cream band
+  drawRect(data, -0.027, 0.24, 0.054, 0.07, PURPLE); // upper red band
+
   // gallery part
   drawQuad(
     data,
@@ -139,18 +252,6 @@ function createModelData() {
   var topCY = 0.75;
   var topR = 0.1;
   drawCircle(data, topCX, topCY, topR, RED, SEGMENTS);
-  // draw light from lantern - light is overlapped by the lantern glass to look more seamless
-  drawQuad(
-    data,
-    [0.1, 0.66],
-    CREAM,
-    [1, 0.4],
-    TEAL,
-    [1, 0.9],
-    TEAL,
-    [-0.1, 0.66],
-    CREAM,
-  );
   // lantern glass
   drawQuad(
     data,
@@ -164,55 +265,37 @@ function createModelData() {
     CREAM,
   );
   // draw the moon
-  var MoonCX = -0.45;
-  var MoonCY = 0.85;
+  var MoonCX = -0.55;
+  var MoonCY = 0.82;
   var MoonR = 0.05;
+  drawGlow(
+    data,
+    MoonCX,
+    MoonCY,
+    MoonR + 0.12,
+    normalizeColor(255, 240, 170, 0.4),
+    normalizeColor(255, 240, 170, 0),
+    SEGMENTS,
+  );
   drawCircle(data, MoonCX, MoonCY, MoonR, WHITE, SEGMENTS);
 
-  // draw water lines - lines are just small heighted quads
-  drawQuad(
+  // water lines - thin rects in the sea around the island (x, y, width, height)
+  drawRect(data, -0.95, -0.78, 0.3, 0.006, WATER);
+  drawRect(data, 0.65, -0.8, 0.3, 0.006, WATER);
+  drawRect(data, -0.9, -0.85, 0.35, 0.006, WATER);
+  drawRect(data, 0.6, -0.87, 0.25, 0.006, WATER);
+  drawRect(data, -0.5, -0.92, 0.45, 0.006, WATER);
+  drawRect(data, 0.1, -0.95, 0.4, 0.006, WATER);
+  drawRect(data, -0.8, -0.97, 0.25, 0.006, WATER);
+
+  drawGlow(
     data,
-    [-0.7, -0.5],
-    WHITE,
-    [-0.3, -0.5],
-    WHITE,
-    [-0.3, -0.495],
-    WHITE,
-    [-0.7, -0.495],
-    WHITE,
-  );
-  drawQuad(
-    data,
-    [-0.4, -0.3],
-    WHITE,
-    [-0.2, -0.3],
-    WHITE,
-    [-0.2, -0.295],
-    WHITE,
-    [-0.4, -0.295],
-    WHITE,
-  );
-  drawQuad(
-    data,
-    [0.8, -0.1],
-    WHITE,
-    [0.4, -0.1],
-    WHITE,
-    [0.4, -0.095],
-    WHITE,
-    [0.8, -0.095],
-    WHITE,
-  );
-  drawQuad(
-    data,
-    [0.6, -0.4],
-    WHITE,
-    [0.3, -0.4],
-    WHITE,
-    [0.3, -0.395],
-    WHITE,
-    [0.6, -0.395],
-    WHITE,
+    0,
+    0.675,
+    0.25,
+    normalizeColor(255, 240, 170, 0.4),
+    normalizeColor(255, 240, 170, 0),
+    SEGMENTS,
   );
 
   return data;
@@ -221,6 +304,10 @@ function createModelData() {
 function setupWebGL(canvas, points) {
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(...normalizeColor(1, 80, 93, 1));
+
+  // blending makes the alpha values work (beam fade, water lines)
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   const program = initShaders(gl, "vertex-shader", "fragment-shader");
   gl.useProgram(program);
@@ -244,7 +331,8 @@ function setupWebGL(canvas, points) {
 
 window.onload = function init() {
   const canvas = document.getElementById("gl-canvas");
-  gl = canvas.getContext("webgl2");
+  // alpha: false keeps the canvas opaque so blending doesn't show the page behind it
+  gl = canvas.getContext("webgl2", { alpha: false });
 
   if (!gl) {
     alert("WebGL 2.0 isnt available");
