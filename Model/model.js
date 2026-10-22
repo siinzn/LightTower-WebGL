@@ -2,6 +2,22 @@
 
 var gl;
 
+let totalVertices = 0;
+
+let isDay = false;
+
+let starsStart = 0;
+let starsEnd = 0;
+
+let beamStart = 0;
+let beamEnd = 0;
+
+let moonStart = 0;
+let moonEnd = 0;
+
+let glowStart = 0;
+let glowEnd = 0;
+
 const FLOATS_PER_VERTEX = 6; // x, y, r, g, b, a
 const BYTES = 4;
 
@@ -128,6 +144,7 @@ function createModelData() {
     SKY_TOP,
   );
 
+  starsStart = data.length / FLOATS_PER_VERTEX;
   // stars - drawn before the scene so the tower and other objects cover them
   for (let i = 0; i < 50; i++) {
     const x = Math.random() * 2 - 1;
@@ -139,8 +156,10 @@ function createModelData() {
 
     drawCircle(data, x, y, radius, color, 8);
   }
+  starsEnd = data.length / FLOATS_PER_VERTEX;
 
   // draw light from lantern - drawn early so the tower and lantern glass cover its start
+  beamStart = data.length / FLOATS_PER_VERTEX;
   drawQuad(
     data,
     [0.1, 0.66],
@@ -152,6 +171,7 @@ function createModelData() {
     [-0.1, 0.66],
     BEAM_NEAR,
   );
+  beamEnd = data.length / FLOATS_PER_VERTEX;
 
   // the sea
   drawQuad(
@@ -264,6 +284,7 @@ function createModelData() {
     [-0.1, 0.75],
     CREAM,
   );
+  moonStart = data.length / FLOATS_PER_VERTEX;
   // draw the moon
   var MoonCX = -0.55;
   var MoonCY = 0.82;
@@ -278,6 +299,7 @@ function createModelData() {
     SEGMENTS,
   );
   drawCircle(data, MoonCX, MoonCY, MoonR, WHITE, SEGMENTS);
+  moonEnd = data.length / FLOATS_PER_VERTEX;
 
   // water lines - thin rects in the sea around the island (x, y, width, height)
   drawRect(data, -0.95, -0.78, 0.3, 0.006, WATER);
@@ -288,6 +310,7 @@ function createModelData() {
   drawRect(data, 0.1, -0.95, 0.4, 0.006, WATER);
   drawRect(data, -0.8, -0.97, 0.25, 0.006, WATER);
 
+  glowStart = data.length / FLOATS_PER_VERTEX;
   drawGlow(
     data,
     0,
@@ -297,6 +320,7 @@ function createModelData() {
     normalizeColor(255, 240, 170, 0),
     SEGMENTS,
   );
+  glowEnd = data.length / FLOATS_PER_VERTEX;
 
   return data;
 }
@@ -341,11 +365,52 @@ window.onload = function init() {
 
   const data = createModelData();
   const points = new Float32Array(data);
+  totalVertices = points.length / FLOATS_PER_VERTEX;
   console.log(points.length);
   setupWebGL(canvas, points);
 };
 
 function render(vertices) {
+  if (isDay) {
+    // Daytime blue background.
+    gl.clearColor(...normalizeColor(225, 241, 253, 1));
+  } else {
+    // Nighttime background.
+    gl.clearColor(...normalizeColor(1, 80, 93, 1));
+  }
+
   gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.drawArrays(gl.TRIANGLES, 0, vertices);
+
+  if (isDay) {
+    // Do not draw the night sky, so the clear color becomes the background.
+    // Skip stars.
+    // Draw from after the stars through before the beam.
+    gl.drawArrays(gl.TRIANGLES, starsEnd, beamStart - starsEnd);
+
+    // Skip the beam.
+    // Draw from after the beam through before the moon.
+    gl.drawArrays(gl.TRIANGLES, beamEnd, moonStart - beamEnd);
+
+    // Skip the moon.
+    // Draw from after the moon through before the glow.
+    gl.drawArrays(gl.TRIANGLES, moonEnd, glowStart - moonEnd);
+
+    // Skip the lighthouse glow.
+    gl.drawArrays(gl.TRIANGLES, glowEnd, vertices - glowEnd);
+  } else {
+    // Draw everything normally at night.
+    gl.drawArrays(gl.TRIANGLES, 0, vertices);
+  }
 }
+
+window.addEventListener("keydown", function (event) {
+  if (event.key.toLowerCase() === "d") {
+    isDay = true;
+  }
+
+  if (event.key.toLowerCase() === "n") {
+    isDay = false;
+  }
+
+  render(totalVertices);
+});
