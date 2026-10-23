@@ -15,17 +15,39 @@
       align-items: center;
     "
   >
-    <h1>Muhammad Finan Noufal</h1>
-    <h2>8860750</h2>
+    <h1>Muhammad Finan Noufal <span> - 8860750</span></h1>
+    <h1>Assesment 02 | 23/10/2026</h1>
     <script id="vertex-shader" type="x-shader/x-vertex">
       #version 300 es
+
       in vec4 aPosition;
       in vec4 aColor;
+
+      uniform float uAngle;
+      uniform vec2 uPivot;
+
+      uniform vec2 uOffset;
+      uniform float uScale;
+
       out vec4 vColor;
+
       void main()
       {
-       gl_Position = aPosition;
-       vColor = aColor;
+        float cosine = cos(uAngle);
+        float sine = sin(uAngle);
+
+        vec2 translated = aPosition.xy - uPivot;
+
+        vec2 rotated = vec2(
+          translated.x * cosine - translated.y * sine,
+          translated.x * sine + translated.y * cosine
+        );
+
+        vec2 rotatedPosition = rotated + uPivot;
+        vec2 finalPosition = rotatedPosition * uScale + uOffset;
+
+        gl_Position = vec4(finalPosition, 0.0, 1.0);
+        vColor = aColor;
       }
     </script>
     <script id="fragment-shader" type="x-shader/x-fragment">

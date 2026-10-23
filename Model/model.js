@@ -2,9 +2,16 @@
 
 var gl;
 
-let totalVertices = 0;
+let beamAngle = 0;
+let angleLocation = 0;
+let pivotLocation = 0;
+let offsetLocation = 0;
+let scaleLocation = 0;
 
 let isDay = false;
+
+let skyStart = 0;
+let skyEnd = 0;
 
 let starsStart = 0;
 let starsEnd = 0;
@@ -12,11 +19,18 @@ let starsEnd = 0;
 let beamStart = 0;
 let beamEnd = 0;
 
+let seaStart = 0;
+let seaEnd = 0;
+
 let moonStart = 0;
 let moonEnd = 0;
 
 let glowStart = 0;
 let glowEnd = 0;
+
+let totalVertices = 0;
+let vertexPoints;
+let vertexBuffer;
 
 const FLOATS_PER_VERTEX = 6; // x, y, r, g, b, a
 const BYTES = 4;
@@ -132,6 +146,7 @@ function createModelData() {
   const data = [];
 
   // the sky - a different color on the top and bottom corners makes the gradient
+  skyStart = data.length / FLOATS_PER_VERTEX;
   drawQuad(
     data,
     [-1, -1],
@@ -143,6 +158,7 @@ function createModelData() {
     [-1, 1],
     SKY_TOP,
   );
+  skyEnd = data.length / FLOATS_PER_VERTEX;
 
   starsStart = data.length / FLOATS_PER_VERTEX;
   // stars - drawn before the scene so the tower and other objects cover them
@@ -160,20 +176,14 @@ function createModelData() {
 
   // draw light from lantern - drawn early so the tower and lantern glass cover its start
   beamStart = data.length / FLOATS_PER_VERTEX;
-  drawQuad(
-    data,
-    [0.1, 0.66],
-    BEAM_NEAR,
-    [1, 0.4],
-    BEAM_FAR,
-    [1, 0.9],
-    BEAM_FAR,
-    [-0.1, 0.66],
-    BEAM_NEAR,
-  );
+  // Beam starts at the lamp center and points right.
+  drawTriangle(data, 0, 0.675, BEAM_NEAR, 1, 0.4, BEAM_FAR, 1, 0.9, BEAM_FAR);
+  // Opposite beam starts at the same lamp center and points left.
+  drawTriangle(data, 0, 0.675, BEAM_NEAR, -1, 0.9, BEAM_FAR, -1, 0.4, BEAM_FAR);
   beamEnd = data.length / FLOATS_PER_VERTEX;
 
   // the sea
+  seaStart = data.length / FLOATS_PER_VERTEX;
   drawQuad(
     data,
     [-1, -1],
@@ -185,6 +195,7 @@ function createModelData() {
     [-1, -0.72],
     SEA_TOP,
   );
+  seaEnd = data.length / FLOATS_PER_VERTEX;
 
   // island base
   drawQuad(
@@ -336,8 +347,13 @@ function setupWebGL(canvas, points) {
   const program = initShaders(gl, "vertex-shader", "fragment-shader");
   gl.useProgram(program);
 
-  const bufferId = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, bufferId);
+  angleLocation = gl.getUniformLocation(program, "uAngle");
+  pivotLocation = gl.getUniformLocation(program, "uPivot");
+  offsetLocation = gl.getUniformLocation(program, "uOffset");
+  scaleLocation = gl.getUniformLocation(program, "uScale");
+
+  vertexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, points, gl.STATIC_DRAW);
 
   const stride = FLOATS_PER_VERTEX * BYTES;
@@ -365,51 +381,120 @@ window.onload = function init() {
 
   const data = createModelData();
   const points = new Float32Array(data);
+  vertexPoints = points;
   totalVertices = points.length / FLOATS_PER_VERTEX;
   console.log(points.length);
   setupWebGL(canvas, points);
+  animateBeam();
 };
 
-function render(vertices) {
-  if (isDay) {
-    // Daytime blue background.
-    gl.clearColor(...normalizeColor(225, 241, 253, 1));
-  } else {
-    // Nighttime background.
-    gl.clearColor(...normalizeColor(1, 80, 93, 1));
+function updateDayColors() {
+  const skyTop = isDay
+    ? normalizeColor(120, 70, 125, 1)
+    : normalizeColor(1, 45, 62, 1);
+  const skyBottom = isDay
+    ? normalizeColor(255, 170, 125, 1)
+    : normalizeColor(8, 110, 122, 1);
+  const seaTop = isDay
+    ? normalizeColor(35, 125, 155, 1)
+    : normalizeColor(4, 70, 88, 1);
+  const seaBottom = isDay
+    ? normalizeColor(20, 85, 120, 1)
+    : normalizeColor(1, 38, 52, 1);
+
+  for (let vertex = skyStart; vertex < skyEnd; vertex++) {
+    const positionIndex = vertex * FLOATS_PER_VERTEX;
+    const colorIndex = positionIndex + 2;
+    const color =
+      vertexPoints[positionIndex + 1] > 0 ? skyTop : skyBottom;
+
+    vertexPoints[colorIndex] = color[0];
+    vertexPoints[colorIndex + 1] = color[1];
+    vertexPoints[colorIndex + 2] = color[2];
+    vertexPoints[colorIndex + 3] = color[3];
   }
 
+  for (let vertex = seaStart; vertex < seaEnd; vertex++) {
+    const positionIndex = vertex * FLOATS_PER_VERTEX;
+    const colorIndex = positionIndex + 2;
+    const color =
+      vertexPoints[positionIndex + 1] > -0.86 ? seaTop : seaBottom;
+
+    vertexPoints[colorIndex] = color[0];
+    vertexPoints[colorIndex + 1] = color[1];
+    vertexPoints[colorIndex + 2] = color[2];
+    vertexPoints[colorIndex + 3] = color[3];
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertexPoints);
+}
+
+function setNormalTransform() {
+  gl.uniform1f(angleLocation, 0);
+  gl.uniform2f(pivotLocation, 0, 0.675);
+  gl.uniform2f(offsetLocation, 0, 0);
+  gl.uniform1f(scaleLocation, 1);
+}
+
+function render(vertices) {
+  gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
+  setNormalTransform();
 
   if (isDay) {
-    // Do not draw the night sky, so the clear color becomes the background.
-    // Skip stars.
-    // Draw from after the stars through before the beam.
+    // Draw the evening gradient sky, but skip the stars.
+    gl.drawArrays(gl.TRIANGLES, skyStart, skyEnd - skyStart);
     gl.drawArrays(gl.TRIANGLES, starsEnd, beamStart - starsEnd);
 
     // Skip the beam.
-    // Draw from after the beam through before the moon.
     gl.drawArrays(gl.TRIANGLES, beamEnd, moonStart - beamEnd);
 
-    // Skip the moon.
-    // Draw from after the moon through before the glow.
+    // Skip the moon and its glow.
     gl.drawArrays(gl.TRIANGLES, moonEnd, glowStart - moonEnd);
-
-    // Skip the lighthouse glow.
     gl.drawArrays(gl.TRIANGLES, glowEnd, vertices - glowEnd);
-  } else {
-    // Draw everything normally at night.
-    gl.drawArrays(gl.TRIANGLES, 0, vertices);
+    return;
   }
+
+  // Night: draw sky and stars before the rotating beam.
+  gl.drawArrays(gl.TRIANGLES, 0, beamStart);
+
+  const depthAngle = Math.cos(beamAngle);
+  const apparentWidth = Math.abs(depthAngle);
+
+  gl.uniform1f(angleLocation, beamAngle);
+  gl.uniform2f(offsetLocation, 0, 0.675 * (1 - apparentWidth));
+  gl.uniform1f(scaleLocation, apparentWidth);
+  gl.drawArrays(gl.TRIANGLES, beamStart, beamEnd - beamStart);
+
+  // Restore the normal transform for everything after the beam.
+  setNormalTransform();
+  gl.drawArrays(gl.TRIANGLES, beamEnd, vertices - beamEnd);
 }
 
-window.addEventListener("keydown", function (event) {
-  if (event.key.toLowerCase() === "d") {
-    isDay = true;
+function animateBeam() {
+  beamAngle += 0.01;
+
+  if (beamAngle > Math.PI * 2) {
+    beamAngle -= Math.PI * 2;
   }
 
-  if (event.key.toLowerCase() === "n") {
+  render(totalVertices);
+
+  requestAnimationFrame(animateBeam);
+}
+
+document.addEventListener("keydown", function (event) {
+  if (event.code === "KeyD") {
+    isDay = true;
+    updateDayColors();
+    event.preventDefault();
+  }
+
+  if (event.code === "KeyN") {
     isDay = false;
+    updateDayColors();
+    event.preventDefault();
   }
 
   render(totalVertices);
